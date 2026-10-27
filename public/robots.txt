@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://escalamed-b.x5med.com.br/sitemap.xml
