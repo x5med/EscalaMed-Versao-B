@@ -127,6 +127,303 @@ export default function ExperienceLayer() {
     }
     renderDiagnosis();
 
+    const supportsVideoPreview = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+    const previewStops = new Map<HTMLButtonElement, () => void>();
+    let stopActiveVideo: (() => void) | undefined;
+
+    const sendPlayerCommand = (
+      player: HTMLIFrameElement,
+      command: "playVideo" | "pauseVideo" | "mute" | "unMute",
+    ) => {
+      player.contentWindow?.postMessage(
+        JSON.stringify({ event: "command", func: command, args: [] }),
+        "*",
+      );
+    };
+
+    const videoPosters = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".em-video-poster"),
+    );
+    for (const [index, poster] of videoPosters.entries()) {
+      const videoId = poster.dataset.youtubeId;
+      if (!videoId) continue;
+
+      const title =
+        poster.dataset.playerTitle ??
+        poster.getAttribute("aria-label") ??
+        `Depoimento em vídeo ${index + 1}`;
+      let previewPlayer: HTMLIFrameElement | undefined;
+      let previewTimer = 0;
+
+      const createPlayer = (loop: boolean) => {
+        const parameters = new URLSearchParams({
+          autoplay: "1",
+          mute: "1",
+          controls: "0",
+          playsinline: "1",
+          rel: "0",
+          modestbranding: "1",
+          iv_load_policy: "3",
+          disablekb: "1",
+          fs: "0",
+          cc_load_policy: "0",
+          enablejsapi: "1",
+          origin: window.location.origin,
+        });
+        if (loop) {
+          parameters.set("loop", "1");
+          parameters.set("playlist", videoId);
+        }
+
+        const player = document.createElement("iframe");
+        player.src = `https://www.youtube-nocookie.com/embed/${videoId}?${parameters.toString()}`;
+        player.title = title;
+        player.className = "em-video-embed-frame";
+        player.allow =
+          "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        player.referrerPolicy = "strict-origin-when-cross-origin";
+        player.tabIndex = -1;
+        return player;
+      };
+
+      const stopPreview = () => {
+        window.clearTimeout(previewTimer);
+        previewTimer = 0;
+        poster.classList.remove("is-previewing");
+        previewPlayer?.remove();
+        previewPlayer = undefined;
+      };
+      previewStops.set(poster, stopPreview);
+
+      const startPreview = () => {
+        if (
+          !supportsVideoPreview ||
+          reducedMotion ||
+          previewPlayer ||
+          stopActiveVideo ||
+          poster.closest(".em-video-viewport")?.classList.contains("is-dragging")
+        ) {
+          return;
+        }
+        window.clearTimeout(previewTimer);
+        previewTimer = window.setTimeout(() => {
+          const player = createPlayer(true);
+          previewPlayer = player;
+          player.classList.add("em-video-hover-preview");
+          player.setAttribute("aria-hidden", "true");
+          poster.append(player);
+          const revealPreview = () => {
+            window.clearTimeout(previewTimer);
+            previewTimer = 0;
+            window.requestAnimationFrame(() => {
+              if (previewPlayer === player) poster.classList.add("is-previewing");
+            });
+          };
+          player.addEventListener(
+            "load",
+            revealPreview,
+            { once: true },
+          );
+          previewTimer = window.setTimeout(revealPreview, 650);
+        }, 120);
+      };
+
+      const openCustomPlayer = () => {
+        stopPreview();
+        stopActiveVideo?.();
+        pushEvent("video_start", {
+          video_id: videoId,
+          video_title: title,
+          video_position: index + 1,
+        });
+
+        const shell = document.createElement("div");
+        const player = createPlayer(false);
+        const hitArea = document.createElement("button");
+        const controls = document.createElement("div");
+        const playToggle = document.createElement("button");
+        const soundToggle = document.createElement("button");
+        const closeButton = document.createElement("button");
+        let playing = true;
+        let muted = true;
+
+        shell.className = "em-video-player-shell";
+        shell.setAttribute("aria-label", title);
+        hitArea.type = "button";
+        hitArea.className = "em-video-player-hitarea";
+        hitArea.setAttribute("aria-label", "Pausar vídeo");
+        controls.className = "em-video-player-controls";
+        playToggle.type = "button";
+        soundToggle.type = "button";
+        closeButton.type = "button";
+        playToggle.textContent = "Pausar";
+        soundToggle.textContent = "Ativar som";
+        closeButton.textContent = "Fechar";
+
+        const togglePlayback = () => {
+          playing = !playing;
+          sendPlayerCommand(player, playing ? "playVideo" : "pauseVideo");
+          playToggle.textContent = playing ? "Pausar" : "Reproduzir";
+          const label = playing ? "Pausar vídeo" : "Reproduzir vídeo";
+          playToggle.setAttribute("aria-label", label);
+          hitArea.setAttribute("aria-label", label);
+          shell.classList.toggle("is-paused", !playing);
+        };
+        const toggleSound = () => {
+          muted = !muted;
+          sendPlayerCommand(player, muted ? "mute" : "unMute");
+          soundToggle.textContent = muted ? "Ativar som" : "Silenciar";
+          soundToggle.setAttribute(
+            "aria-label",
+            muted ? "Ativar som do vídeo" : "Silenciar vídeo",
+          );
+        };
+        const closePlayer = () => {
+          shell.replaceWith(poster);
+          stopActiveVideo = undefined;
+          poster.focus();
+        };
+
+        hitArea.addEventListener("click", togglePlayback);
+        playToggle.addEventListener("click", togglePlayback);
+        soundToggle.addEventListener("click", toggleSound);
+        closeButton.addEventListener("click", closePlayer);
+        controls.append(playToggle, soundToggle, closeButton);
+        shell.append(player, hitArea, controls);
+        poster.replaceWith(shell);
+        stopActiveVideo = closePlayer;
+        soundToggle.focus();
+      };
+
+      poster.addEventListener("mouseenter", startPreview);
+      poster.addEventListener("mouseleave", stopPreview);
+      poster.addEventListener("focus", startPreview);
+      poster.addEventListener("blur", stopPreview);
+      poster.addEventListener("click", openCustomPlayer);
+      cleanups.push(() => {
+        poster.removeEventListener("mouseenter", startPreview);
+        poster.removeEventListener("mouseleave", stopPreview);
+        poster.removeEventListener("focus", startPreview);
+        poster.removeEventListener("blur", stopPreview);
+        poster.removeEventListener("click", openCustomPlayer);
+        stopPreview();
+      });
+    }
+
+    const videoViewport = document.querySelector<HTMLElement>(
+      "[data-video-viewport]",
+    );
+    const videoPrevious = document.querySelector<HTMLButtonElement>(
+      "[data-video-prev]",
+    );
+    const videoNext = document.querySelector<HTMLButtonElement>(
+      "[data-video-next]",
+    );
+    if (videoViewport && videoPrevious && videoNext) {
+      let railFrame = 0;
+      let dragPointer: number | undefined;
+      let dragStartX = 0;
+      let dragStartScroll = 0;
+      let didDrag = false;
+      let suppressClick = false;
+      let suppressTimer = 0;
+
+      const updateControls = () => {
+        const maximum = Math.max(
+          videoViewport.scrollWidth - videoViewport.clientWidth,
+          0,
+        );
+        videoPrevious.disabled = videoViewport.scrollLeft <= 2;
+        videoNext.disabled = videoViewport.scrollLeft >= maximum - 2;
+        railFrame = 0;
+      };
+      const moveRail = (direction: number) => {
+        const item = videoViewport.querySelector<HTMLElement>(".em-video-slide");
+        const track = videoViewport.firstElementChild;
+        const gap = track
+          ? Number.parseFloat(getComputedStyle(track).gap) || 0
+          : 0;
+        const distance =
+          (item?.getBoundingClientRect().width ?? videoViewport.clientWidth) + gap;
+        videoViewport.scrollBy({
+          left: distance * direction,
+          behavior: reducedMotion ? "auto" : "smooth",
+        });
+      };
+      const onRailScroll = () => {
+        if (railFrame) return;
+        railFrame = window.requestAnimationFrame(updateControls);
+      };
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.button !== 0 || dragPointer !== undefined) return;
+        dragPointer = event.pointerId;
+        dragStartX = event.clientX;
+        dragStartScroll = videoViewport.scrollLeft;
+        didDrag = false;
+        for (const stopPreview of previewStops.values()) stopPreview();
+      };
+      const onPointerMove = (event: PointerEvent) => {
+        if (event.pointerId !== dragPointer) return;
+        const distance = event.clientX - dragStartX;
+        if (!didDrag && Math.abs(distance) < 14) return;
+        if (!videoViewport.hasPointerCapture(event.pointerId)) {
+          videoViewport.setPointerCapture(event.pointerId);
+        }
+        didDrag = true;
+        videoViewport.classList.add("is-dragging");
+        videoViewport.scrollLeft = dragStartScroll - distance;
+        if (event.cancelable) event.preventDefault();
+      };
+      const finishDrag = (event: PointerEvent) => {
+        if (event.pointerId !== dragPointer) return;
+        if (videoViewport.hasPointerCapture(event.pointerId)) {
+          videoViewport.releasePointerCapture(event.pointerId);
+        }
+        dragPointer = undefined;
+        videoViewport.classList.remove("is-dragging");
+        suppressClick = didDrag;
+        window.clearTimeout(suppressTimer);
+        suppressTimer = window.setTimeout(() => {
+          suppressClick = false;
+        }, 0);
+      };
+      const preventDraggedClick = (event: MouseEvent) => {
+        if (!suppressClick) return;
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick = false;
+      };
+      const goPrevious = () => moveRail(-1);
+      const goNext = () => moveRail(1);
+
+      videoPrevious.addEventListener("click", goPrevious);
+      videoNext.addEventListener("click", goNext);
+      videoViewport.addEventListener("scroll", onRailScroll, { passive: true });
+      videoViewport.addEventListener("pointerdown", onPointerDown);
+      videoViewport.addEventListener("pointermove", onPointerMove);
+      videoViewport.addEventListener("pointerup", finishDrag);
+      videoViewport.addEventListener("pointercancel", finishDrag);
+      videoViewport.addEventListener("click", preventDraggedClick, true);
+      window.addEventListener("resize", updateControls, { passive: true });
+      updateControls();
+      cleanups.push(() => {
+        videoPrevious.removeEventListener("click", goPrevious);
+        videoNext.removeEventListener("click", goNext);
+        videoViewport.removeEventListener("scroll", onRailScroll);
+        videoViewport.removeEventListener("pointerdown", onPointerDown);
+        videoViewport.removeEventListener("pointermove", onPointerMove);
+        videoViewport.removeEventListener("pointerup", finishDrag);
+        videoViewport.removeEventListener("pointercancel", finishDrag);
+        videoViewport.removeEventListener("click", preventDraggedClick, true);
+        window.removeEventListener("resize", updateControls);
+        window.cancelAnimationFrame(railFrame);
+        window.clearTimeout(suppressTimer);
+      });
+    }
+    cleanups.push(() => stopActiveVideo?.());
+
     const revealTargets = Array.from(
       document.querySelectorAll<HTMLElement>(
         "section h1, section h2, section h3, section [data-scene], section details, section img, .em-hero-price, .em-results-disclaimer",
