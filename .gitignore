@@ -5,3 +5,6 @@ node_modules
 *.tsbuildinfo
 audit.json
 .DS_Store
+
+.vercel
+.env*
