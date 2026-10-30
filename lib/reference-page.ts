@@ -87,6 +87,26 @@ function replaceTestimonialMedia(html: string) {
   return `${html.slice(0, mediaStart)}${createTestimonialMedia()}${html.slice(mediaEnd + 6)}`;
 }
 
+function removeSectionById(html: string, id: string) {
+  const start = html.indexOf(`<section id="${id}"`);
+  if (start < 0) return html;
+  const end = html.indexOf("</section>", start);
+  if (end < 0) return html;
+  return `${html.slice(0, start)}${html.slice(end + 10)}`;
+}
+
+function mountLeadFormAfterDiagnosis(html: string) {
+  const start = html.indexOf('<section id="teste"');
+  const end = html.indexOf("</section>", start);
+  if (start < 0 || end < 0) return html;
+  const section = html.slice(start, end + 10);
+  const withMount = section.replace(
+    /<a class="em-btn" data-track-cta="[^"]+" href="#formulario"[^>]*>Quero minha vaga<\/a>/,
+    '<div id="formulario" class="em-form-mount" aria-label="Formulário de interesse no EscalaMED"></div>',
+  );
+  return `${html.slice(0, start)}${withMount}${html.slice(end + 10)}`;
+}
+
 function transformReferenceMarkup() {
   const body = source.match(/<body>([\s\S]*?)<\/body>/)?.[1] ?? "";
   let html = body.replace(/<script[\s\S]*?<\/script>/g, "");
@@ -109,6 +129,37 @@ function transformReferenceMarkup() {
     "27, 28 e 29 de novembro",
     "27, 28 e 29 de novembro de 2026",
   );
+  html = html.replaceAll(
+    '<span style="white-space: nowrap;">Mais faturamento.</span>',
+    '<span style="white-space: nowrap;">Mais estrutura.</span>',
+  );
+  html = html.replaceAll("Mais faturamento", "Mais estrutura");
+  html = html.replaceAll("MAIS FATURAMENTO", "MAIS ESTRUTURA");
+  html = html.replace(
+    /(<p style="margin: 0; font-family: Sora,[^>]+>)\+2(<\/p><p style="margin: 10px 0 0;[^>]+>Anos de mercado<\/p>)/,
+    "$1+20$2",
+  );
+  html = html.replaceAll(
+    "Onde é e quanto custa?",
+    "Onde será e como recebo os detalhes?",
+  );
+  html = html.replaceAll(
+    "um mapa de como fazer sua clínica aumentar os lucros sem depender de você para funcionar, te dando  mais liberdade e mais resultado.",
+    "um mapa de como estruturar o crescimento da clínica sem depender de você para funcionar, com mais liberdade e decisões melhores.",
+  );
+  html = html.replaceAll(
+    'href="https://formulario-escalamed.x5med.com.br/" target="_blank" rel="noopener"',
+    'href="#formulario"',
+  );
+  html = html.replaceAll("Garantir minha vaga", "Quero minha vaga");
+  html = html.replaceAll(
+    "Antes de garantir a sua vaga.",
+    "Antes de pedir a sua vaga.",
+  );
+  html = html.replaceAll(
+    "No Star Eventos Alphaville, na Alameda Madeira, 222, em Barueri, SP. O investimento é de R$ 2.497.",
+    "No Star Eventos Alphaville, na Alameda Madeira, 222, em Barueri, SP. Nossa equipe explica os detalhes e as condições pelo WhatsApp.",
+  );
   html = replaceTestimonialMedia(html);
 
   let ctaIndex = 0;
@@ -122,15 +173,8 @@ function transformReferenceMarkup() {
     'data-track-map="star-eventos-alphaville" href="https://www.google.com/maps/search/?api=1&amp;query=Star+Eventos+Alphaville+Alameda+Madeira+222+Barueri"',
   );
 
-  const heroOffer = `<div class="em-hero-price" aria-label="Investimento: R$ 2.497 à vista ou 12 parcelas de R$ 258,25 com juros"><strong>R$ 2.497 à vista</strong><span>ou 12x de R$ 258,25*</span><small>* Parcelamento com juros</small></div>\n`;
-  html = html.replace(
-    /(<section id="inicio"[\s\S]*?)(<a class="em-btn" data-track-cta="version-b-\d+" href="https:\/\/formulario-escalamed\.x5med\.com\.br\/"[^>]*>Garantir minha vaga<\/a>)/,
-    `$1${heroOffer}$2`,
-  );
-  html = html.replace(
-    /(<span style="font-family: Sora, 'Avenir Next', system-ui, sans-serif; font-weight: 500; font-size: clamp\(34px, 3\.4vw, 44px\); line-height: 1; letter-spacing: -0\.04em; color: #f4b540;">R\$ 2\.497<\/span><\/div>)/,
-    `$1<p class="em-investment-installment">ou 12x de R$ 258,25*<small>* Parcelamento com juros</small></p>`,
-  );
+  html = mountLeadFormAfterDiagnosis(html);
+  html = removeSectionById(html, "inscricao");
   html = html.replace(
     /(<section id="depoimentos"[\s\S]*?)(<\/section>)/,
     `$1<p class="em-results-disclaimer">Os resultados apresentados são individuais e podem variar conforme o contexto, a execução e as condições de cada clínica.</p>\n$2`,

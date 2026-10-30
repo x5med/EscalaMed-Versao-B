@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import LeadForm from "./LeadForm";
 
 declare global {
   interface Window {
@@ -30,6 +32,11 @@ function pushEvent(event: string, payload: Record<string, unknown> = {}) {
 
 export default function ExperienceLayer() {
   const [consentVisible, setConsentVisible] = useState(false);
+  const [formMount, setFormMount] = useState<HTMLElement | null>(null);
+  const [diagnosis, setDiagnosis] = useState<{ count: number; scenes: string[] }>({
+    count: 0,
+    scenes: [],
+  });
 
   useEffect(() => {
     const cleanups: Array<() => void> = [];
@@ -41,6 +48,7 @@ export default function ExperienceLayer() {
       /(?:^|; )x5med_consent=([^;]*)/,
     )?.[1];
     setConsentVisible(!savedConsent);
+    setFormMount(document.getElementById("formulario"));
 
     const current = new URLSearchParams(window.location.search);
     let attribution: Record<string, string> = {};
@@ -60,15 +68,10 @@ export default function ExperienceLayer() {
 
     const ctas = Array.from(
       document.querySelectorAll<HTMLAnchorElement>(
-        'a[href^="https://formulario-escalamed.x5med.com.br"]',
+        "a[data-track-cta]",
       ),
     );
     for (const anchor of ctas) {
-      const url = new URL(anchor.href);
-      for (const [key, value] of Object.entries(attribution)) {
-        if (!url.searchParams.has(key)) url.searchParams.set(key, value);
-      }
-      anchor.href = url.toString();
       const handleClick = () =>
         pushEvent("cta_click", {
           cta_position: anchor.dataset.trackCta ?? "unknown",
@@ -114,6 +117,11 @@ export default function ExperienceLayer() {
       if (none) none.hidden = count !== 0;
       if (few) few.hidden = !(count > 0 && count < 3);
       if (many) many.hidden = count < 3;
+      const scenes = diagnosisButtons
+        .filter((button) => selected.has(Number(button.dataset.scene)))
+        .map((button) => button.lastElementChild?.textContent?.trim() ?? "")
+        .filter(Boolean);
+      setDiagnosis({ count, scenes });
     };
     for (const button of diagnosisButtons) {
       const handleClick = () => {
@@ -541,6 +549,7 @@ export default function ExperienceLayer() {
 
   return (
     <>
+      {formMount ? createPortal(<LeadForm diagnosis={diagnosis} />, formMount) : null}
       <a
         className="em-whatsapp"
         href="https://wa.me/557999383447?text=Ol%C3%A1%2C%20quero%20saber%20mais%20sobre%20o%20EscalaMED"
