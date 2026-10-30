@@ -43,6 +43,9 @@ export default function ExperienceLayer() {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    const motionLite = window.matchMedia(
+      "(max-width: 900px), (pointer: coarse)",
+    ).matches;
 
     const savedConsent = document.cookie.match(
       /(?:^|; )x5med_consent=([^;]*)/,
@@ -488,11 +491,14 @@ export default function ExperienceLayer() {
 
     const thresholds = [25, 50, 75, 90];
     const reached = new Set<number>();
+    const siteHeader = document.querySelector<HTMLElement>(".em-site-header");
+    const hero = document.querySelector<HTMLElement>(".em-hero");
     let scrollFrame = 0;
     const handleScroll = () => {
       if (scrollFrame) return;
       scrollFrame = window.requestAnimationFrame(() => {
         scrollFrame = 0;
+        siteHeader?.classList.toggle("is-scrolled", window.scrollY > 28);
         const total = document.documentElement.scrollHeight - window.innerHeight;
         const percent = total > 0 ? Math.round((window.scrollY / total) * 100) : 100;
         for (const threshold of thresholds) {
@@ -501,10 +507,26 @@ export default function ExperienceLayer() {
             pushEvent("scroll_depth", { percent_scrolled: threshold });
           }
         }
-        if (!reducedMotion) {
+        if (!reducedMotion && !motionLite && hero) {
+          const heroProgress = Math.min(
+            window.scrollY / Math.max(hero.offsetHeight * 0.68, 1),
+            1,
+          );
           document.documentElement.style.setProperty(
             "--em-hero-shift",
-            `${Math.min(window.scrollY * 0.045, 24)}px`,
+            `${Math.min(window.scrollY * 0.13, 56)}px`,
+          );
+          document.documentElement.style.setProperty(
+            "--em-hero-copy-shift",
+            `${Math.min(window.scrollY * 0.04, 18)}px`,
+          );
+          document.documentElement.style.setProperty(
+            "--em-hero-scale",
+            String(1 + heroProgress * 0.028),
+          );
+          document.documentElement.style.setProperty(
+            "--em-hero-brightness",
+            String(1 - heroProgress * 0.1),
           );
         }
       });
@@ -515,6 +537,10 @@ export default function ExperienceLayer() {
       window.removeEventListener("scroll", handleScroll);
       if (scrollFrame) window.cancelAnimationFrame(scrollFrame);
       document.documentElement.style.removeProperty("--em-hero-shift");
+      document.documentElement.style.removeProperty("--em-hero-copy-shift");
+      document.documentElement.style.removeProperty("--em-hero-scale");
+      document.documentElement.style.removeProperty("--em-hero-brightness");
+      siteHeader?.classList.remove("is-scrolled");
     });
 
     return () => {

@@ -112,6 +112,14 @@ function transformReferenceMarkup() {
   let html = body.replace(/<script[\s\S]*?<\/script>/g, "");
 
   html = html.replace(
+    "<header style=",
+    '<header class="em-site-header" style=',
+  );
+  html = html.replace(
+    '<div style="max-width: 1240px; margin: 0 auto; padding: 0 24px; min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">',
+    '<div class="em-nav-shell" style="max-width: 1240px; margin: 0 auto; padding: 0 24px; min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">',
+  );
+  html = html.replace(
     '<section id="inicio" style=',
     '<section id="inicio" class="em-hero" style=',
   );
@@ -126,6 +134,10 @@ function transformReferenceMarkup() {
   html = html.replace(
     '<div style="flex: 0 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">',
     '<div class="em-hero-side" style="flex: 0 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">',
+  );
+  html = html.replace(
+    '<div aria-hidden="true" style="position: absolute; top: 0; left: 0; right: 0; height: clamp(300px, 46vw, 660px);',
+    '<div class="em-hero-fade" aria-hidden="true" style="position: absolute; top: 0; left: 0; right: 0; height: clamp(300px, 46vw, 660px);',
   );
 
   let jpegIndex = 0;
