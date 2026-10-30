@@ -18,10 +18,51 @@ section[id] {
 }
 
 .em-page .em-hero-image {
-  transform: translateX(-50%) translateY(var(--em-hero-shift)) scale(1.015) !important;
+  opacity: 1;
+  scale: 1;
+  transform: translateX(-50%) translateY(var(--em-hero-shift)) !important;
   transform-origin: 50% 18%;
-  animation: em-hero-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
-  will-change: transform;
+  animation: em-hero-image-in 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, scale, transform;
+}
+
+.em-page .em-hero-copy > * {
+  animation: em-hero-copy-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+.em-page .em-hero-copy > :nth-child(1) {
+  animation-delay: 0.35s;
+}
+
+.em-page .em-hero-copy > :nth-child(2) {
+  animation-delay: 0.48s;
+}
+
+.em-page .em-hero-copy > :nth-child(3) {
+  animation-delay: 0.61s;
+}
+
+.em-page .em-hero-copy > :nth-child(4) {
+  animation-delay: 0.74s;
+}
+
+.em-page .em-hero-side > a {
+  animation: em-hero-action-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+.em-page .em-hero-side > a:nth-of-type(1) {
+  animation-delay: 0.75s;
+}
+
+.em-page .em-hero-side > a:nth-of-type(2) {
+  animation-delay: 0.87s;
+}
+
+.em-page .em-hero-side > ul {
+  animation: em-hero-action-in 0.9s 0.99s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
 }
 
 .em-form-mount {
@@ -834,11 +875,37 @@ section[id] {
   }
 }
 
-@keyframes em-hero-in {
+@keyframes em-hero-image-in {
+  from {
+    opacity: 0.72;
+    scale: 0.88;
+  }
+}
+
+@keyframes em-hero-copy-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-8px) scale(1.055);
-    filter: blur(5px);
+    transform: translateY(48px);
+  }
+}
+
+@keyframes em-hero-action-in {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+}
+
+@keyframes em-hero-image-in-mobile {
+  from {
+    opacity: 0.82;
+  }
+}
+
+@keyframes em-hero-copy-in-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
   }
 }
 
@@ -858,6 +925,51 @@ section[id] {
 }
 
 @media (max-width: 600px) {
+  .em-page .em-hero-image {
+    animation-name: em-hero-image-in-mobile;
+    animation-duration: 0.85s;
+  }
+
+  .em-page .em-hero-copy > * {
+    animation-name: em-hero-copy-in-mobile;
+    animation-duration: 0.65s;
+  }
+
+  .em-page .em-hero-copy > :nth-child(1) {
+    animation-delay: 0.15s;
+  }
+
+  .em-page .em-hero-copy > :nth-child(2) {
+    animation-delay: 0.22s;
+  }
+
+  .em-page .em-hero-copy > :nth-child(3) {
+    animation-delay: 0.29s;
+  }
+
+  .em-page .em-hero-copy > :nth-child(4) {
+    animation-delay: 0.36s;
+  }
+
+  .em-page .em-hero-side > a {
+    animation-name: em-hero-copy-in-mobile;
+    animation-duration: 0.65s;
+  }
+
+  .em-page .em-hero-side > a:nth-of-type(1) {
+    animation-delay: 0.43s;
+  }
+
+  .em-page .em-hero-side > a:nth-of-type(2) {
+    animation-delay: 0.5s;
+  }
+
+  .em-page .em-hero-side > ul {
+    animation-name: em-hero-copy-in-mobile;
+    animation-duration: 0.65s;
+    animation-delay: 0.57s;
+  }
+
   .em-page header > div {
     min-height: 68px !important;
     gap: 12px !important;

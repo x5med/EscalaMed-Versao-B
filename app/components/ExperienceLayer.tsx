@@ -436,7 +436,7 @@ export default function ExperienceLayer() {
       document.querySelectorAll<HTMLElement>(
         "section h1, section h2, section h3, section [data-scene], section details, section img, .em-hero-price, .em-results-disclaimer",
       ),
-    );
+    ).filter((element) => !element.closest("#inicio"));
     const cardTargets = Array.from(
       document.querySelectorAll<HTMLElement>(
         "[data-scene], details, #mentores [style*='border-radius: 24px'], #depoimentos [style*='border-radius: 24px'], #inscricao [style*='border-radius: 30px'], #localizacao [style*='border-radius: 28px']",

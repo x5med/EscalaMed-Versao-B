@@ -111,6 +111,23 @@ function transformReferenceMarkup() {
   const body = source.match(/<body>([\s\S]*?)<\/body>/)?.[1] ?? "";
   let html = body.replace(/<script[\s\S]*?<\/script>/g, "");
 
+  html = html.replace(
+    '<section id="inicio" style=',
+    '<section id="inicio" class="em-hero" style=',
+  );
+  html = html.replace(
+    '<div style="position: relative; max-width: 1240px; margin: 0 auto; padding: clamp(268px, 31vw, 440px) 24px 56px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 40px;">',
+    '<div class="em-hero-content" style="position: relative; max-width: 1240px; margin: 0 auto; padding: clamp(268px, 31vw, 440px) 24px 56px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 40px;">',
+  );
+  html = html.replace(
+    '<div style="flex: 1 1 620px; min-width: 0; max-width: 820px;">',
+    '<div class="em-hero-copy" style="flex: 1 1 620px; min-width: 0; max-width: 820px;">',
+  );
+  html = html.replace(
+    '<div style="flex: 0 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">',
+    '<div class="em-hero-side" style="flex: 0 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">',
+  );
+
   let jpegIndex = 0;
   html = html.replace(/src="data:image\/jpeg;base64,[^"]+"/g, () => {
     jpegIndex += 1;
