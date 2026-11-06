@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import LeadForm from "./LeadForm";
+import { pushEvent } from "../../lib/tracking";
 
 declare global {
   interface Window {
@@ -24,11 +25,6 @@ const attributionKeys = [
 ] as const;
 
 const storageKey = "escalamed-attribution-v1";
-
-function pushEvent(event: string, payload: Record<string, unknown> = {}) {
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push({ event, ...payload });
-}
 
 export default function ExperienceLayer() {
   const [consentVisible, setConsentVisible] = useState(false);

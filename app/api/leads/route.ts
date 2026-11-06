@@ -76,13 +76,14 @@ export async function POST(request: NextRequest) {
   const role = text(body.role, 40) as RoleValue;
   const revenueRange = text(body.revenueRange, 40) as RevenueValue;
   const companyWebsite = text(body.companyWebsite, 120);
+  const noClinic = role === "doctor-no-clinic";
+  const revenue = noClinic ? null : revenueRange;
 
-  if (companyWebsite) return NextResponse.json({ success: true, eventId });
   if (!uuidPattern.test(eventId)) return validationError("form", "Atualize a página e tente novamente.");
   if (!isValidName(name)) return validationError("name", "Informe seu nome completo, sem números.");
   if (!isValidPhone(phone)) return validationError("phone", "Informe um WhatsApp válido com DDD.");
-  if (!(role in roleLabels)) return validationError("role", "Selecione o seu cargo.");
-  if (!(revenueRange in revenueLabels)) return validationError("revenueRange", "Selecione o faturamento mensal da clínica.");
+  if (!Object.hasOwn(roleLabels, role)) return validationError("role", "Selecione o seu cargo.");
+  if (!noClinic && !Object.hasOwn(revenueLabels, revenueRange)) return validationError("revenueRange", "Selecione o faturamento mensal da clínica.");
   if (!isValidEmail(email)) return validationError("email", "Informe um e-mail válido ou deixe o campo vazio.");
 
   const diagnosisScore = Number.isInteger(body.diagnosisScore)
@@ -102,7 +103,10 @@ export async function POST(request: NextRequest) {
     .map(([key, value]) => `${key}: ${value}`)
     .join(" · ");
   const notes = [
-    `Faturamento mensal: ${revenueLabels[revenueRange]}`,
+    `Cargo: ${roleLabels[role]}`,
+    `Faturamento mensal: ${revenue ? revenueLabels[revenue] : "Não se aplica — médico sem clínica própria"}`,
+    noClinic ? "Perfil: médico sem clínica própria — fora do público da imersão; avaliar próximo passo comercial." : "",
+    companyWebsite ? "Revisão anti-robô: suspeito (companyWebsite preenchido; possível preenchimento automático). Cadastro preservado para análise." : "",
     `Autodiagnóstico: ${diagnosisScore}/6 situações marcadas`,
     diagnosisScenes.length ? `Situações: ${diagnosisScenes.join(" | ")}` : "Situações: nenhuma marcada",
     "Consentimento: ao enviar, autorizou contato da X5 Med pelo WhatsApp.",
@@ -134,8 +138,13 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         nome: name,
         telefone: phoneKey(phone),
-        email,
+        ...(email ? { email } : {}),
         cargo: roleLabels[role],
+        faixa_faturamento: revenue ? revenueLabels[revenue] : null,
+        diagnostic_score: diagnosisScore,
+        ...attribution,
+        sem_clinica_propria: noClinic,
+        suspeito: Boolean(companyWebsite),
         observacoes: notes,
         fonte: LEAD_SOURCE,
         event_id: eventId,

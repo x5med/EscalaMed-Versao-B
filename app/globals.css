@@ -262,6 +262,7 @@ section[id] {
 .em-lead-email,
 .em-lead-submit,
 .em-lead-consent,
+.em-lead-notice,
 .em-lead-error {
   grid-column: 1 / -1;
 }
@@ -305,6 +306,17 @@ section[id] {
   color: #ffd2d2;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.em-lead-notice {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(244, 181, 64, 0.4);
+  border-radius: 12px;
+  background: rgba(244, 181, 64, 0.08);
+  color: #f4d78e;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .em-lead-consent {

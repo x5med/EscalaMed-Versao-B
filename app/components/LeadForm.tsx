@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import { pushEvent } from "../../lib/tracking";
 import {
   FORM_ID,
   FORM_NAME,
@@ -44,11 +45,6 @@ const attributionKeys = [
   "gbraid",
 ] as const;
 
-function pushEvent(event: string, payload: Record<string, unknown> = {}) {
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push({ event, ...payload });
-}
-
 function readAttribution() {
   const parameters = new URLSearchParams(window.location.search);
   const output: Record<string, string> = {};
@@ -59,7 +55,12 @@ function readAttribution() {
   if (Object.keys(output).length) return output;
   try {
     const stored = JSON.parse(sessionStorage.getItem("escalamed-attribution-v1") || "{}");
-    return stored && typeof stored === "object" ? stored as Record<string, string> : {};
+    if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+      for (const key of attributionKeys) {
+        if (typeof stored[key] === "string" && stored[key]) output[key] = stored[key];
+      }
+    }
+    return output;
   } catch {
     return {};
   }
@@ -68,8 +69,8 @@ function readAttribution() {
 function fieldError(fields: FormFields) {
   if (!isValidName(fields.name)) return { field: "name", message: "Informe seu nome completo, sem números." };
   if (!isValidPhone(fields.phone)) return { field: "phone", message: "Informe um WhatsApp válido com DDD." };
-  if (!(fields.role in roleLabels)) return { field: "role", message: "Selecione o seu cargo." };
-  if (!(fields.revenueRange in revenueLabels)) return { field: "revenueRange", message: "Selecione o faturamento mensal da clínica." };
+  if (!Object.hasOwn(roleLabels, fields.role)) return { field: "role", message: "Selecione o seu cargo." };
+  if (fields.role !== "doctor-no-clinic" && !Object.hasOwn(revenueLabels, fields.revenueRange)) return { field: "revenueRange", message: "Selecione o faturamento mensal da clínica." };
   if (!isValidEmail(fields.email)) return { field: "email", message: "Informe um e-mail válido ou deixe o campo vazio." };
   return null;
 }
@@ -96,7 +97,11 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
   const update = (field: keyof FormFields, value: string) => {
     trackStart();
     setError("");
-    setFields((current) => ({ ...current, [field]: value }));
+    setFields((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === "role" && value === "doctor-no-clinic" ? { revenueRange: "" } : {}),
+    }));
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -119,6 +124,7 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
     setSending(true);
     setError("");
     try {
+      const attribution = readAttribution();
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,11 +135,11 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
           diagnosisScenes: diagnosis.scenes,
           pageUrl: window.location.href,
           referrer: document.referrer,
-          attribution: readAttribution(),
+          attribution,
         }),
       });
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error || "Não foi possível enviar agora.");
+      const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
+      if (!response.ok || result?.success !== true) throw new Error(result?.error || "Não foi possível enviar agora.");
 
       pushEvent("generate_lead", {
         event_id: eventId,
@@ -144,8 +150,9 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
         faixa_faturamento: revenueLabels[fields.revenueRange as keyof typeof revenueLabels],
         diagnostic_score: diagnosis.count,
         source_identifier: "LP-NOVO",
+        ...attribution,
         user_data: {
-          ...(fields.email.trim() ? { email_address: fields.email.trim().toLowerCase() } : {}),
+          email_address: fields.email.trim() ? fields.email.trim().toLowerCase() : undefined,
           phone_number: `+55${phoneKey(fields.phone)}`,
         },
       });
@@ -174,7 +181,7 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
         <p>Dados recebidos</p>
         <h3>Agora é com a nossa equipe.</h3>
         <p>
-          Em até 1 dia útil, o time da X5 Med vai chamar você no WhatsApp informado
+          Ainda hoje, o time da X5 Med vai chamar você no WhatsApp informado
           para explicar os próximos passos, os detalhes e as condições do EscalaMED.
         </p>
         <small>Não é necessário realizar nenhum pagamento nesta página.</small>
@@ -248,7 +255,12 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
           </select>
         </label>
 
-        <label htmlFor="lead-revenueRange">
+        {fields.role === "doctor-no-clinic" ? (
+          <p className="em-lead-notice" role="status">
+            A imersão é voltada a quem já tem uma clínica em funcionamento.
+            Você pode enviar seus dados para nossa equipe avaliar o melhor próximo passo.
+          </p>
+        ) : <label htmlFor="lead-revenueRange">
           <span className="em-label-text">Faturamento mensal da clínica <b>*</b></span>
           <select
             id="lead-revenueRange"
@@ -262,7 +274,7 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
-        </label>
+        </label>}
 
         <label className="em-lead-email" htmlFor="lead-email">
           <span className="em-label-text">E-mail <em>opcional</em></span>
