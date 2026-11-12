@@ -70,12 +70,18 @@ test("a stale notice version still captures the lead without a WhatsApp consent 
   assert.equal(Object.hasOwn(calls[0].body, "whatsapp_consent"), false);
 });
 
-test("filled honeypot reaches CRM with review flag, attribution and qualification", async (t) => {
-  const { body, calls } = await send(t, { companyWebsite: "autofilled.example", attribution: { ...payload.attribution, token: "drop-me" } });
+test("filled honeypot reaches CRM for review without consent even with the current notice version", async (t) => {
+  const { body, calls } = await send(t, {
+    companyWebsite: "autofilled.example",
+    whatsappNoticeVersion: "escalamed-b-whatsapp-2026-11-12-v1",
+    attribution: { ...payload.attribution, token: "drop-me" },
+  });
   assert.equal(body.success, true);
   const lead = calls[0].body;
   assert.equal(lead.suspeito, true);
   assert.match(lead.observacoes, /possível preenchimento automático/);
+  assert.doesNotMatch(lead.observacoes, /Consentimento:/);
+  assert.equal(Object.hasOwn(lead, "whatsapp_consent"), false);
   assert.equal(lead.companyWebsite, undefined);
   assert.equal(lead.token, undefined);
   for (const [key, value] of Object.entries(payload.attribution)) {
