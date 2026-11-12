@@ -44,14 +44,44 @@ test("WhatsApp alone is forwarded; empty or absent optional email is omitted", a
   assert.equal(Object.hasOwn(calls[0].body, "email"), false);
   assert.equal(calls[0].options.headers["Idempotency-Key"], payload.eventId);
   assert.equal(calls[0].body.event_id, payload.eventId);
+  assert.equal(Object.hasOwn(calls[0].body, "whatsapp_consent"), false);
 });
 
-test("filled honeypot reaches CRM with review flag, attribution and qualification", async (t) => {
-  const { body, calls } = await send(t, { companyWebsite: "autofilled.example", attribution: { ...payload.attribution, token: "drop-me" } });
+test("the current notice version adds only the server's WhatsApp consent proof", async (t) => {
+  const version = "escalamed-b-whatsapp-2026-11-12-v1";
+  const notice = "Ao solicitar sua vaga, você autoriza a X5 MED a enviar pelo WhatsApp a confirmação do seu interesse e os detalhes do EscalaMED.";
+  const { response, calls } = await send(t, {
+    whatsappNoticeVersion: version,
+    whatsapp_consent: { granted: false, notice_version: "client", notice: "Client copy" },
+  });
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(calls[0].body.whatsapp_consent, { granted: true, notice_version: version, notice });
+  assert.ok(calls[0].body.observacoes.includes(notice));
+});
+
+test("a stale notice version still captures the lead without a WhatsApp consent proof", async (t) => {
+  const { response, calls } = await send(t, {
+    whatsappNoticeVersion: "old-version",
+    whatsapp_consent: { granted: true, notice_version: "old-version", notice: "Old copy" },
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal(Object.hasOwn(calls[0].body, "whatsapp_consent"), false);
+});
+
+test("filled honeypot reaches CRM for review without consent even with the current notice version", async (t) => {
+  const { body, calls } = await send(t, {
+    companyWebsite: "autofilled.example",
+    whatsappNoticeVersion: "escalamed-b-whatsapp-2026-11-12-v1",
+    attribution: { ...payload.attribution, token: "drop-me" },
+  });
   assert.equal(body.success, true);
   const lead = calls[0].body;
   assert.equal(lead.suspeito, true);
   assert.match(lead.observacoes, /possível preenchimento automático/);
+  assert.doesNotMatch(lead.observacoes, /Consentimento:/);
+  assert.equal(Object.hasOwn(lead, "whatsapp_consent"), false);
   assert.equal(lead.companyWebsite, undefined);
   assert.equal(lead.token, undefined);
   for (const [key, value] of Object.entries(payload.attribution)) {

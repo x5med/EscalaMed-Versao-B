@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   LEAD_SOURCE,
+  WHATSAPP_NOTICE,
+  WHATSAPP_NOTICE_VERSION,
   isValidEmail,
   isValidName,
   isValidPhone,
@@ -75,7 +77,8 @@ export async function POST(request: NextRequest) {
   const email = text(body.email, 254).toLowerCase();
   const role = text(body.role, 40) as RoleValue;
   const revenueRange = text(body.revenueRange, 40) as RevenueValue;
-  const companyWebsite = text(body.companyWebsite, 120);
+  const flaggedForReview = Boolean(text(body.companyWebsite, 120));
+  const acceptsWhatsappNotice = !flaggedForReview && body.whatsappNoticeVersion === WHATSAPP_NOTICE_VERSION;
   const noClinic = role === "doctor-no-clinic";
   const revenue = noClinic ? null : revenueRange;
 
@@ -102,14 +105,17 @@ export async function POST(request: NextRequest) {
   const attributionSummary = Object.entries(attribution)
     .map(([key, value]) => `${key}: ${value}`)
     .join(" · ");
+  const consentNote = acceptsWhatsappNotice
+    ? `Consentimento: ${WHATSAPP_NOTICE}`
+    : "Consentimento: ao enviar, autorizou contato da X5 Med pelo WhatsApp.";
   const notes = [
     `Cargo: ${roleLabels[role]}`,
     `Faturamento mensal: ${revenue ? revenueLabels[revenue] : "Não se aplica — médico sem clínica própria"}`,
     noClinic ? "Perfil: médico sem clínica própria — fora do público da imersão; avaliar próximo passo comercial." : "",
-    companyWebsite ? "Revisão anti-robô: suspeito (companyWebsite preenchido; possível preenchimento automático). Cadastro preservado para análise." : "",
+    flaggedForReview ? "Revisão anti-robô: suspeito (companyWebsite preenchido; possível preenchimento automático). Cadastro preservado para análise." : "",
     `Autodiagnóstico: ${diagnosisScore}/6 situações marcadas`,
     diagnosisScenes.length ? `Situações: ${diagnosisScenes.join(" | ")}` : "Situações: nenhuma marcada",
-    "Consentimento: ao enviar, autorizou contato da X5 Med pelo WhatsApp.",
+    flaggedForReview ? "" : consentNote,
     pageUrl ? `Página: ${pageUrl}` : "",
     referrer ? `Referência: ${referrer}` : "",
     attributionSummary ? `Atribuição: ${attributionSummary}` : "",
@@ -144,10 +150,17 @@ export async function POST(request: NextRequest) {
         diagnostic_score: diagnosisScore,
         ...attribution,
         sem_clinica_propria: noClinic,
-        suspeito: Boolean(companyWebsite),
+        suspeito: flaggedForReview,
         observacoes: notes,
         fonte: LEAD_SOURCE,
         event_id: eventId,
+        ...(acceptsWhatsappNotice ? {
+          whatsapp_consent: {
+            granted: true,
+            notice_version: WHATSAPP_NOTICE_VERSION,
+            notice: WHATSAPP_NOTICE,
+          },
+        } : {}),
       }),
       cache: "no-store",
       signal: controller.signal,
