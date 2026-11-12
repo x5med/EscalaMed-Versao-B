@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   LEAD_SOURCE,
+  WHATSAPP_NOTICE,
+  WHATSAPP_NOTICE_VERSION,
   isValidEmail,
   isValidName,
   isValidPhone,
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   const eventId = text(body.eventId, 80);
+  const acceptsWhatsappNotice = body.whatsappNoticeVersion === WHATSAPP_NOTICE_VERSION;
   const name = text(body.name, 160).replace(/\s+/g, " ");
   const phone = text(body.phone, 40);
   const email = text(body.email, 254).toLowerCase();
@@ -109,7 +112,9 @@ export async function POST(request: NextRequest) {
     companyWebsite ? "Revisão anti-robô: suspeito (companyWebsite preenchido; possível preenchimento automático). Cadastro preservado para análise." : "",
     `Autodiagnóstico: ${diagnosisScore}/6 situações marcadas`,
     diagnosisScenes.length ? `Situações: ${diagnosisScenes.join(" | ")}` : "Situações: nenhuma marcada",
-    "Consentimento: ao enviar, autorizou contato da X5 Med pelo WhatsApp.",
+    acceptsWhatsappNotice
+      ? `Consentimento: ${WHATSAPP_NOTICE}`
+      : "Consentimento: ao enviar, autorizou contato da X5 Med pelo WhatsApp.",
     pageUrl ? `Página: ${pageUrl}` : "",
     referrer ? `Referência: ${referrer}` : "",
     attributionSummary ? `Atribuição: ${attributionSummary}` : "",
@@ -148,6 +153,13 @@ export async function POST(request: NextRequest) {
         observacoes: notes,
         fonte: LEAD_SOURCE,
         event_id: eventId,
+        ...(acceptsWhatsappNotice ? {
+          whatsapp_consent: {
+            granted: true,
+            notice_version: WHATSAPP_NOTICE_VERSION,
+            notice: WHATSAPP_NOTICE,
+          },
+        } : {}),
       }),
       cache: "no-store",
       signal: controller.signal,

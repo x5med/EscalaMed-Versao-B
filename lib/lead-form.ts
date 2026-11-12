@@ -1,6 +1,8 @@
 export const FORM_ID = "escalamed_lp_novo";
 export const FORM_NAME = "EscalaMED · LP-NOVO";
 export const LEAD_SOURCE = "LP-NOVO";
+export const WHATSAPP_NOTICE_VERSION = "escalamed-b-whatsapp-2026-11-12-v1";
+export const WHATSAPP_NOTICE = "Ao solicitar sua vaga, você autoriza a X5 MED a enviar pelo WhatsApp a confirmação do seu interesse e os detalhes do EscalaMED.";
 
 export const roleLabels = {
   "doctor-owner": "Médico com clínica própria",
@@ -21,6 +23,7 @@ export type RevenueValue = keyof typeof revenueLabels;
 
 export type LeadFormPayload = {
   eventId: string;
+  whatsappNoticeVersion?: string;
   name: string;
   phone: string;
   role: string;

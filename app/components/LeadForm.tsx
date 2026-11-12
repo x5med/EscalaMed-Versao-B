@@ -5,6 +5,8 @@ import { pushEvent } from "../../lib/tracking";
 import {
   FORM_ID,
   FORM_NAME,
+  WHATSAPP_NOTICE,
+  WHATSAPP_NOTICE_VERSION,
   formatPhone,
   isValidEmail,
   isValidName,
@@ -130,6 +132,7 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventId,
+          whatsappNoticeVersion: WHATSAPP_NOTICE_VERSION,
           ...fields,
           diagnosisScore: diagnosis.count,
           diagnosisScenes: diagnosis.scenes,
@@ -302,12 +305,12 @@ export default function LeadForm({ diagnosis }: { diagnosis: DiagnosisResult }) 
         </label>
 
         {error ? <p className="em-lead-error" role="alert">{error}</p> : null}
-        <button className="em-btn em-lead-submit" type="submit" disabled={sending}>
+        <button className="em-btn em-lead-submit" type="submit" disabled={sending} aria-describedby="lead-whatsapp-notice">
           {sending ? "Enviando..." : "Quero minha vaga"}
         </button>
+        <p className="em-lead-consent" id="lead-whatsapp-notice">{WHATSAPP_NOTICE}</p>
         <p className="em-lead-consent">
-          Ao enviar, você autoriza nosso contato pelo WhatsApp. Seus dados são
-          tratados conforme a nossa{" "}
+          Seus dados são tratados conforme a nossa{" "}
           <a
             href="https://metrics.x5med.com.br/politica-de-privacidade"
             target="_blank"
